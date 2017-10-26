@@ -1,0 +1,101 @@
+Sub SiteToPDF()
+    
+'==================================================================================
+' FILTRA LA HOJA DE TRABAJO POR SITIO Y GENERA UN PDF CON LOS RESULTADOS, UNO POR CADA SITIO
+' LOS PDF SE GENERAN EN LA CARPETA DEL ARCHIVO OBJETIVO!
+'==================================================================================
+      
+    Dim i As Integer
+    Dim shtname As String
+    Dim lASTrOW As Long
+    Dim DataRange As Range
+    Dim UniqueRng As Range
+    Dim fila As Integer
+    Dim columna As Integer
+    
+'Optimizar le ejecucion de la macro
+    Application.ScreenUpdating = False
+    Application.EnableEvents = False
+    Application.Calculation = xlCalculationManual
+  
+'-------------------------------Paso 0--------------------
+'Obtener la ruta de la carpeta objetivo del usuario
+    DirectoryLocation = ActiveWorkbook.Path
+    
+'-------------------------------Paso 1--------------------
+'---Corra la macro, presione F5. establece contador del numero de hojas--
+    For i = 1 To Sheets.Count
+    
+    shtname = Worksheets(i).name
+    Sheets(i).Activate
+
+'-------------------------------Paso 2--------------------
+'Determinar la ultima celda en rango
+    lASTrOW = Cells(Cells.Rows.Count, "A").End(xlUp).Row
+    
+'-------------------------------Paso 3--------------------
+'---Busca, extrae y guarda la direccion de la celda especificada en un rango determinado--
+        On Error Resume Next 'Error handler si no existe campo Site
+        
+        next_site = DireccionCeldaSiguiente("Site", Worksheets(shtname).Range("A1", ActiveCell.SpecialCells(xlLastCell)))
+        columna = Range(next_site).Column
+        fila = Range(next_site).Row
+    
+'-------------------------------Paso 4--------------------
+'Determinar el rango de datos de interes
+        Set DataRange = ActiveSheet.Range("A" & fila, ActiveCell.SpecialCells(xlLastCell))
+
+'-------------------------------Paso 5--------------------
+'Definicion y ejecucion del autofitltro
+        DataRange.AutoFilter Field:=columna
+        
+        Set UniqueRng = Range(Cells(fila + 1, columna).Address, "B" & lASTrOW)
+        For Each Cell In UniqueRng
+            DataRange.AutoFilter Field:=columna, Criteria1:=Cell
+            
+'-------------------------------Paso 6--------------------
+'Determina el area de impresion y genera el pdf
+            ActiveSheet.PageSetup.PrintArea = Worksheets(shtname).Range("A1", ActiveCell.SpecialCells(xlLastCell))
+            name = DirectoryLocation & "\" & "Site " & Cell.Value & " Report" & ".pdf"
+            
+            ActiveSheet.ExportAsFixedFormat Type:=xlTypePDF, Filename:=name _
+            , Quality:=xlQualityStandard, IncludeDocProperties:=True, IgnorePrintAreas _
+            :=False, OpenAfterPublish:=False
+             
+        Next Cell
+          
+        With ActiveSheet
+             .Protect Userinterfaceonly:=True, _
+             DrawingObjects:=False, Contents:=True, Scenarios:= _
+            True, AllowFormattingColumns:=True, AllowFormattingRows:=True
+             .EnableOutlining = True
+             .EnableAutoFilter = True
+             If .FilterMode Then
+                .ShowAllData
+             End If
+         End With
+     
+    Next i
+    
+ResetSettings:
+  'Reset de los ajustes de optimizacion de la Macro
+    Application.EnableEvents = True
+    Application.Calculation = xlCalculationAutomatic
+    Application.ScreenUpdating = True
+    
+End Sub
+
+'---Funcion de busqueda de la direccion de la celda debajo de una especificada en un rango determinado--
+Public Function DireccionCeldaSiguiente(Valor_Buscado, Matriz_Busqueda As Range)
+    Dim rngCell As Range
+   
+    For Each rngCell In Matriz_Busqueda
+        If rngCell.Value = Valor_Buscado Then
+            DireccionCeldaSiguiente = rngCell.Offset(rowOffset:=0, columnOffset:=0).Address
+            Exit Function
+        Else
+            DireccionCeldaSiguiente = "No existe!"
+        End If
+    Next rngCell
+
+End Function
