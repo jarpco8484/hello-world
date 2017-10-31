@@ -55,19 +55,24 @@ Sub SiteToPDF()
             
 '-------------------------------Paso 6--------------------
 'Determina el area de impresion y genera el pdf
-            ActiveSheet.PageSetup.PrintArea = Worksheets(shtname).Range("A1", ActiveCell.SpecialCells(xlLastCell))
+            Application.PrintCommunication = False
+                With ActiveSheet.PageSetup
+                    .PrintArea = Worksheets(shtname).Range("A1", ActiveCell.SpecialCells(xlLastCell)).Address
+                    .Orientation = xlLandscape
+                    .Zoom = False
+                    .FitToPagesWide = 1
+                    .FitToPagesTall = False
+                End With
+            Application.PrintCommunication = True
+            
             name = DirectoryLocation & "\" & "Site " & Cell.Value & " Report" & ".pdf"
             
-            ActiveSheet.ExportAsFixedFormat Type:=xlTypePDF, Filename:=name _
-            , Quality:=xlQualityStandard, IncludeDocProperties:=True, IgnorePrintAreas _
-            :=False, OpenAfterPublish:=False
+            ActiveSheet.ExportAsFixedFormat Type:=xlTypePDF, Filename:=name, Quality:=xlQualityStandard, IncludeDocProperties:=True, IgnorePrintAreas:=False, OpenAfterPublish:=False
              
         Next Cell
           
         With ActiveSheet
-             .Protect Userinterfaceonly:=True, _
-             DrawingObjects:=False, Contents:=True, Scenarios:= _
-            True, AllowFormattingColumns:=True, AllowFormattingRows:=True
+             '.Protect Userinterfaceonly:=True, DrawingObjects:=False, Contents:=True, Scenarios:=True, AllowFormattingColumns:=True, AllowFormattingRows:=True
              .EnableOutlining = True
              .EnableAutoFilter = True
              If .FilterMode Then
