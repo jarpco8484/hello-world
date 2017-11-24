@@ -1,7 +1,7 @@
 Sub SiteToPDF()
     
 '==================================================================================
-'this procedure print a PDF for each different value on cell range, PDF files are created in the same folder objective file, and prepares a email with some description including the generated PDF as an attachment.
+'this procedure prints a PDF for each different value on cell range, PDF files are created in the same folder objective file, this one also prepares an email with some description including the generated PDF as an attachment.
 '==================================================================================
       
     Dim i As Integer
@@ -55,7 +55,7 @@ Sub SiteToPDF()
             DataRange.AutoFilter Field:=columna, Criteria1:=Cell
             
 '-------------------------------Step 6--------------------
-'Defining print area, creates the PDF File and prepares the email
+'Defining print area, creates the PDF report File and prepares the email
 Application.PrintCommunication = False
                 With ActiveSheet.PageSetup
                     .PrintArea = Worksheets(shtname).Range("A1", ActiveCell.SpecialCells(xlLastCell)).Address
