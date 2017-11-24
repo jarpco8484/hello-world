@@ -1,0 +1,153 @@
+Sub SiteToPDF()
+    
+'==================================================================================
+'this procedure print a PDF for each different value on cell range, PDF files are created in the same folder objective file, and prepares a email with some description including the generated PDF as an attachment.
+'==================================================================================
+      
+    Dim i As Integer
+    Dim shtname As String
+    Dim lASTrOW As Long
+    Dim DataRange As Range
+    Dim UniqueRng As Range
+    Dim fila As Integer
+    Dim columna As Integer
+    Dim ProtocolName As String
+    Dim Mail1 As Object
+
+'Optimizing Macro Execution
+    Application.ScreenUpdating = False
+    Application.EnableEvents = False
+    Application.Calculation = xlCalculationManual
+  
+'-------------------------------Step 0--------------------
+'Obtain address objective file
+    DirectoryLocation = ActiveWorkbook.Path
+    
+'-------------------------------Step 1--------------------
+'---Macro can be executed for a Workbook with multiple Sheets--
+        
+    shtname = Worksheets(1).Name
+    Sheets(1).Activate
+
+'-------------------------------Step 2--------------------
+'Defining last cell of Sheet
+    lASTrOW = Cells(Cells.Rows.Count, "A").End(xlUp).Row
+    
+'-------------------------------Step 3--------------------
+'---Search and save address of specific cell on specific range--
+        On Error Resume Next 'Error handler in case Column Site does not exist
+        
+        next_site = DireccionCeldaSiguiente("Site", Worksheets(shtname).Range("A1", ActiveCell.SpecialCells(xlLastCell)))
+        
+        columna = Range(next_site).Column
+        fila = Range(next_site).Row
+    
+'-------------------------------Step 4--------------------
+'Define Work Range
+        Set DataRange = ActiveSheet.Range("A" & fila, ActiveCell.SpecialCells(xlLastCell))
+
+'-------------------------------Step 5--------------------
+'Defining and executing autofilter
+        DataRange.AutoFilter Field:=columna
+        
+        Set UniqueRng = Range(Cells(fila + 1, columna).Address, "B" & lASTrOW)
+        For Each Cell In UniqueRng
+            DataRange.AutoFilter Field:=columna, Criteria1:=Cell
+            
+'-------------------------------Step 6--------------------
+'Defining print area, creates the PDF File and prepares the email
+Application.PrintCommunication = False
+                With ActiveSheet.PageSetup
+                    .PrintArea = Worksheets(shtname).Range("A1", ActiveCell.SpecialCells(xlLastCell)).Address
+                    .Orientation = xlLandscape
+                    .Zoom = False
+                    .FitToPagesWide = 1
+                    .FitToPagesTall = False
+                End With
+                
+            ProtocolName = "MK3475-122"
+         
+            Application.PrintCommunication = True
+            
+            Name = DirectoryLocation & "\" & "Site " & Cell.Value & " Report" & ".pdf"
+            namesite = "Site: " & Cell.Value
+            
+            ActiveSheet.ExportAsFixedFormat Type:=xlTypePDF, Filename:=Name, Quality:=xlQualityStandard, IncludeDocProperties:=True, IgnorePrintAreas:=False, OpenAfterPublish:=False
+            Call CreateMail(next_site, ProtocolName, namesite)
+            
+        Next Cell
+          
+        With ActiveSheet
+             '.Protect Userinterfaceonly:=True, DrawingObjects:=False, Contents:=True, Scenarios:=True, AllowFormattingColumns:=True, AllowFormattingRows:=True
+             .EnableOutlining = True
+             .EnableAutoFilter = True
+             If .FilterMode Then
+                .ShowAllData
+             End If
+         End With
+         
+ResetSettings:
+  'Reset Optimization Parameters
+    Application.EnableEvents = True
+    Application.Calculation = xlCalculationAutomatic
+    Application.ScreenUpdating = True
+    
+End Sub
+
+'---Search Function next cell of Specified Cell--
+Public Function DireccionCeldaSiguiente(Valor_Buscado, Matriz_Busqueda As Range)
+    Dim rngCell As Range
+   
+    For Each rngCell In Matriz_Busqueda
+        If rngCell.Value = Valor_Buscado Then
+            DireccionCeldaSiguiente = rngCell.Offset(rowOffset:=0, columnOffset:=0).Address
+            Exit Function
+        Else
+            DireccionCeldaSiguiente = "No existe!"
+        End If
+    Next rngCell
+
+End Function
+
+'---Mail subroutine--
+Public Sub CreateMail(next_site, ProtocolName As String, namesite)
+
+        Dim Row_CeldaSitio As Integer
+        Dim asunto As String
+        Dim Investigator As String
+        Dim Country As String
+        Dim AApp As Object
+        Dim MMail As Object
+        Dim MBody As String
+        Dim Pharmacist As String
+        dias = 5
+        
+        'CeldaSitio = DireccionCeldaSiguiente(CurrentSite, Worksheets("Contact List").Range("A1", ActiveCell.SpecialCells(xlLastCell)))
+        Row_CeldaSitio = Range(next_site).Row + 1
+        Country = Worksheets("Contact List").Range("A" & Row_CeldaSitio)
+        Investigator = Worksheets("Contact List").Range("F" & Row_CeldaSitio)
+        Pharmacist = Worksheets("Contact List").Range("E" & Row_CeldaSitio)
+    
+        asunto = "Unblinded Data Escalation of: " & ProtocolName & " (" & namesite & " -- Country: " & Country & " -- Investigator: " & Investigator & ")"
+        
+        MBody = "Unblinded Pharmacist: " & Pharmacist & vbNewLine & _
+        "Please find the attached reports for " & ProtocolName & " detailing outstanding unblinded queries and missing information." & vbNewLine & _
+        "Please ensure prompt resolution of these outstanding items. If you have any questions regarding the report, please do not hesitate to contact your Unblinded CRA." & vbNewLine & _
+        "Please address all issues below as soon as possible. Some information contained in this report has been outstanding for more than " & dias & " Calendar days. Your Unblinded Clinical Research Associate will be calling to discuss the resolution of these issues and answer any questions you may have. As a reminder, and to avoid further notices, please address opened queries on a daily basis." & vbNewLine & _
+        "If you have already addressed the issues below, thank you for completing this promptly." & vbNewLine & _
+        "Thank you,"
+        
+    Set OutApp = CreateObject("Outlook.Application")
+    Set OutMail = OutApp.CreateItem(0)
+    On Error Resume Next
+    With OutMail
+        .to = Worksheets("Contact List").Range("C" & Row_CeldaSitio)
+        .CC = Worksheets("Contact List").Range("D" & Row_CeldaSitio)
+        .BCC = ""
+        .Subject = asunto
+        .body = MBody
+        .Attachments.Add Name
+        .display
+    End With
+        
+End Sub
